@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario Editoriale</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --nav-h:56px;--bg:#F7F7F5;--surface:#FFFFFF;--border:#E8E8E4;--text:#1A1A18;--muted:#8A8A82;--accent:#FF385C;--green:#26A69A;--radius:8px;
+  --reel:#FF385C;--carosello:#5C6BC0;--story:#26A69A;--post:#F4A020;--video:#8D6E63;--live:#42A5F5;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ══ SCREENS ══ */
+.screen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:var(--bg)}
+.screen.active{display:flex}
+.card{background:var(--surface);border-radius:20px;padding:40px;width:560px;max-width:100%;box-shadow:0 8px 48px rgba(0,0,0,.08)}
+.card-logo{width:48px;height:48px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+.card-logo svg{width:26px;height:26px;fill:white}
+.card h1{font-size:22px;font-weight:600;margin-bottom:6px}
+.card .sub{font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.6}
+
+/* steps */
+.step-list{display:flex;flex-direction:column;gap:0;margin-bottom:28px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.step-item{display:flex;gap:16px;padding:16px;border-bottom:1px solid var(--border);background:var(--surface);transition:background .15s}
+.step-item:last-child{border-bottom:none}
+.step-item.done{background:#F0FAF9}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:background .2s}
+.step-item.done .step-num{background:var(--green)}
+.step-body strong{display:block;font-size:14px;font-weight:600;margin-bottom:3px}
+.step-body p{font-size:13px;color:var(--muted);line-height:1.5}
+.step-body a{color:var(--accent);text-decoration:none;font-weight:500}
+.step-body a:hover{text-decoration:underline}
+.step-body code{background:#F0F1FC;padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px;color:#3A3F9C}
+
+.highlight-box{background:#FFF8F9;border:1px solid #ffd0d8;border-radius:10px;padding:16px;margin-bottom:20px;font-size:13px;line-height:1.6;color:#7a2030}
+.highlight-box strong{display:block;margin-bottom:4px;font-size:14px;color:var(--accent)}
+
+.fields{display:grid;gap:12px;margin-bottom:20px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.field input{width:100%;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;outline:none;transition:border .15s}
+.field input:focus{border-color:var(--accent);background:var(--surface)}
+.field .hint{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.field .hint a{color:var(--accent);text-decoration:none}
+
+.primary-btn{width:100%;padding:13px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;margin-bottom:10px}
+.primary-btn:hover{background:#e0324f}
+.primary-btn:disabled{background:#ccc;cursor:not-allowed}
+.secondary-btn{width:100%;padding:10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;cursor:pointer;font-family:inherit;transition:all .15s}
+.secondary-btn:hover{background:var(--bg);color:var(--text)}
+.err-box{background:#FFF0F2;border:1px solid #ffd0d8;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:#B01828;display:none;margin-bottom:12px}
+.err-box.show{display:block}
+
+/* ══ APP ══ */
+#app{display:none}
+nav{height:var(--nav-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:100}
+.logo{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo svg{width:16px;height:16px;fill:white}
+.client-name{font-weight:600;font-size:15px;cursor:pointer;padding-bottom:1px;border-bottom:1px dashed transparent}
+.client-name:hover{border-color:var(--muted)}
+.client-edit{display:none;font-size:14px;padding:3px 8px;border:1px solid var(--accent);border-radius:6px;outline:none;font-family:inherit;width:160px}
+.nav-sep{width:1px;height:20px;background:var(--border)}
+.view-tabs{display:flex;gap:2px;background:var(--bg);border-radius:var(--radius);padding:3px}
+.view-tab{padding:5px 14px;font-size:13px;font-weight:500;border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:6px;transition:all .15s;font-family:inherit}
+.view-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nav-btn{padding:6px 14px;font-size:13px;font-weight:500;border-radius:var(--radius);cursor:pointer;transition:all .15s;font-family:inherit;display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:transparent;color:var(--text)}
+.nav-btn:hover{background:var(--bg)}
+.nav-btn.accent{border:none;background:var(--accent);color:white}
+.nav-btn.accent:hover{background:#e0324f}
+.sync-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:5px 10px;border-radius:20px;background:var(--bg)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#ccc;transition:background .3s}
+.sync-dot.ok{background:var(--green)}.sync-dot.busy{background:var(--post);animation:pulse .8s infinite}.sync-dot.err{background:var(--reel)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.toolbar{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:var(--nav-h);z-index:99;flex-wrap:wrap}
+.week-nav{display:flex;align-items:center;gap:8px}
+.icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:16px;font-family:inherit}
+.icon-btn:hover{background:var(--bg)}
+.period-label{font-size:14px;font-weight:600;min-width:210px;text-align:center}
+.today-btn{padding:5px 12px;font-size:12px;font-weight:500;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit}
+.today-btn:hover{background:var(--bg)}
+.filter-group{margin-left:auto;display:flex;gap:8px}
+.filter-select{padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer}
+
+.legend{display:flex;gap:14px;padding:10px 20px 0;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+
+#weekView{overflow-x:auto;padding:0 20px 40px}
+.cal-grid{display:grid;grid-template-columns:56px repeat(7,minmax(140px,1fr));min-width:700px}
+.day-header{background:var(--surface);border-bottom:2px solid var(--border);border-right:1px solid var(--border);padding:12px 10px;position:sticky;top:calc(var(--nav-h) + 46px);z-index:50}
+.day-header.time-col{background:var(--bg);border-bottom:2px solid var(--border)}
+.day-name{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.day-num{font-size:20px;font-weight:300;line-height:1.2;margin-top:1px}
+.day-header.today .day-num{color:var(--accent);font-weight:600}
+.day-header.today{border-bottom-color:var(--accent)}
+.time-label{padding:8px 6px 0 0;font-size:10px;color:var(--muted);text-align:right;border-right:1px solid var(--border);border-bottom:1px solid var(--bg);background:var(--bg)}
+.day-cell{border-right:1px solid var(--border);border-bottom:1px solid #F0F0EC;min-height:76px;padding:5px;background:var(--surface)}
+.day-cell:last-child{border-right:none}
+.post-card{border-radius:var(--radius);padding:6px 8px;margin-bottom:5px;cursor:pointer;transition:transform .1s,box-shadow .1s;border-left:3px solid transparent}
+.post-card:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.tipo-badge{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:20px;display:inline-block;margin-bottom:4px}
+.post-title{font-size:11px;font-weight:500;line-height:1.4}
+.post-copy{font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-meta{display:flex;align-items:center;gap:4px;margin-top:5px;flex-wrap:wrap}
+.channel-dot{width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;flex-shrink:0}
+.hashtag-tag{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace}
+.add-btn{width:100%;padding:6px;border:1px dashed var(--border);border-radius:var(--radius);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit;margin-top:2px}
+.add-btn:hover{background:var(--bg);border-color:#bbb}
+.tipo-reel{background:#FFF0F2;border-left-color:var(--reel)}.tipo-reel .tipo-badge{background:#FFD6DC;color:#B01828}
+.tipo-carosello{background:#F0F1FC;border-left-color:var(--carosello)}.tipo-carosello .tipo-badge{background:#D8DAFF;color:#3A3F9C}
+.tipo-story{background:#F0FAF9;border-left-color:var(--story)}.tipo-story .tipo-badge{background:#C8F0EC;color:#0D6B64}
+.tipo-post{background:#FEF8EC;border-left-color:var(--post)}.tipo-post .tipo-badge{background:#FDEAC8;color:#925C00}
+.tipo-video{background:#F5F0EE;border-left-color:var(--video)}.tipo-video .tipo-badge{background:#E8DDD9;color:#5C3E37}
+.tipo-live{background:#EFF8FF;border-left-color:var(--live)}.tipo-live .tipo-badge{background:#CCEEFF;color:#0A558C}
+
+#monthView{padding:0 20px 40px;display:none}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--border);border-top:1px solid var(--border)}
+.month-dow{background:var(--surface);text-align:center;padding:10px 0;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.month-cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:130px;padding:7px;background:var(--surface)}
+.month-cell.other-month{background:#FAFAF8}.month-cell.today-cell{background:#FFF8F9}
+.month-day-num{font-size:13px;font-weight:500;color:var(--muted);margin-bottom:5px;display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%}
+.month-cell.today-cell .month-day-num{background:var(--accent);color:white;font-weight:600}
+.month-post-pill{display:flex;align-items:center;gap:4px;padding:2px 6px 2px 4px;border-radius:4px;margin-bottom:3px;cursor:pointer;font-size:11px;font-weight:500;overflow:hidden;max-width:100%}
+.month-post-pill:hover{opacity:.75}
+.month-post-pill span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.month-more{font-size:10px;color:var(--muted);cursor:pointer;margin-top:2px;display:inline-block}
+.month-more:hover{color:var(--text)}
+.month-add-btn{width:100%;padding:4px;border:1px dashed transparent;border-radius:5px;background:transparent;color:transparent;font-size:11px;cursor:pointer;text-align:left;font-family:inherit;margin-top:2px;transition:all .15s}
+.month-cell:hover .month-add-btn{border-color:var(--border);color:var(--muted)}
+
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:14px;width:580px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:2}
+.modal-header h2{font-size:16px;font-weight:600}
+.modal-close{width:28px;height:28px;border:none;background:var(--bg);border-radius:6px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.modal-close:hover{background:var(--border)}
+.modal-body{padding:20px 24px;display:grid;gap:14px}
+.mfield label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.mfield input,.mfield textarea,.mfield select{width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;transition:border .15s;outline:none}
+.mfield input:focus,.mfield textarea:focus,.mfield select:focus{border-color:var(--accent);background:var(--surface)}
+.mfield textarea{resize:vertical;min-height:80px;line-height:1.5}
+.mfield-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tipo-pills{display:flex;gap:6px;flex-wrap:wrap}
+.tipo-pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid var(--border);cursor:pointer;background:transparent;color:var(--muted);font-family:inherit;transition:all .12s}
+.tipo-pill.sel-reel{background:#FFD6DC;color:#B01828;border-color:#FFD6DC}
+.tipo-pill.sel-carosello{background:#D8DAFF;color:#3A3F9C;border-color:#D8DAFF}
+.tipo-pill.sel-story{background:#C8F0EC;color:#0D6B64;border-color:#C8F0EC}
+.tipo-pill.sel-post{background:#FDEAC8;color:#925C00;border-color:#FDEAC8}
+.tipo-pill.sel-video{background:#E8DDD9;color:#5C3E37;border-color:#E8DDD9}
+.tipo-pill.sel-live{background:#CCEEFF;color:#0A558C;border-color:#CCEEFF}
+.modal-footer{padding:0 24px 20px;display:flex;gap:8px;justify-content:space-between;align-items:center}
+.btn-delete{padding:8px 14px;background:transparent;color:#cc2222;border:1px solid #f5c0c0;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:inherit}
+.btn-delete:hover{background:#fff0f0}
+.btn-save{padding:9px 20px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-cancel{padding:9px 16px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:inherit}
+
+/* SETTINGS */
+.sm{background:var(--surface);border-radius:14px;width:460px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.sm-sec{padding:20px 24px;border-bottom:1px solid var(--border)}
+.sm-sec:last-child{border-bottom:none}
+.sm-sec h3{font-size:13px;font-weight:600;margin-bottom:14px}
+.sm-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.sm-inp{flex:1;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;outline:none}
+.sm-inp:focus{border-color:var(--accent)}
+.sm-btn{padding:8px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s}
+.sm-btn.p{background:var(--accent);color:white;border:none}.sm-btn.p:hover{background:#e0324f}
+.sm-btn.s{background:transparent;color:var(--text);border:1px solid var(--border)}.sm-btn.s:hover{background:var(--bg)}
+.sm-btn.d{background:transparent;color:#cc2222;border:1px solid #f5c0c0}.sm-btn.d:hover{background:#fff0f0}
+.sm-hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1A1A18;color:white;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:500;transition:transform .3s;pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.page-loader{display:none;position:fixed;inset:0;background:rgba(247,247,245,.92);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.page-loader.show{display:flex}
+.spin{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.page-loader p{font-size:14px;color:var(--muted);font-weight:500}
+</style>
+</head>
+<body>
+
+<!-- ══ SCREEN 1: GITHUB PAGES GUIDE ══ -->
+<div class="screen active" id="screen1">
+  <div class="card">
+    <div class="card-logo"><svg viewBox="0 0 24 24"><path d="M4 4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2H4zm1 3h14v1H5V7zm0 4h14v6H5v-6z"/></svg></div>
+    <h1>Calendario Editoriale</h1>
+    <p class="sub">Per funzionare con Supabase il file deve essere su un server <code>https://</code>. Usiamo <strong>GitHub Pages</strong> — gratuito e pronto in 5 minuti.</p>
+
+    <div class="highlight-box">
+      <strong>⚠️ Perché non funziona aprendo il file direttamente?</strong>
+      Il browser blocca le chiamate a internet da file locali (<code>file://</code>) per sicurezza. Caricando il file su GitHub Pages ottieni un link <code>https://</code> che funziona ovunque — PC, telefono, cliente.
+    </div>
+
+    <div class="step-list">
+      <div class="step-item" id="s1">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Crea un account GitHub gratuito</strong>
+          <p>Vai su <a href="https://github.com/signup" target="_blank">github.com/signup</a> e registrati. Se ce l'hai già salta questo step.</p>
+        </div>
+      </div>
+      <div class="step-item" id="s2">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Crea un nuovo repository</strong>
+          <p>Vai su <a href="https://github.com/new" target="_blank">github.com/new</a> → chiama il repository <code>calendario</code> → spunta <b>Public</b> → clicca <b>Create repository</b>.</p>
+        </div>
+      </div>
+      <div class="step-item" id="s3">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Carica questo file HTML</strong>
+          <p>Nella pagina del repository clicca <b>uploading an existing file</b> → trascina il file <code>calendario_editoriale.html</code> → rinominalo <code>index.html</code> → clicca <b>Commit changes</b>.</p>
+        </div>
+      </div>
+      <div class="step-item" id="s4">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Attiva GitHub Pages</strong>
+          <p>Nel repository vai su <b>Settings → Pages</b> → sotto <i>Branch</i> seleziona <code>main</code> → clicca <b>Save</b>. Aspetta 1-2 minuti.</p>
+        </div>
+      </div>
+      <div class="step-item" id="s5">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Apri il tuo link</strong>
+          <p>Il calendario sarà disponibile su <code>https://tuonome.github.io/calendario</code>. Condividi questo link con il cliente — entrambi potete modificare!</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="primary-btn" onclick="showScreen('screen2')">Ho caricato il file, configura Supabase →</button>
+    <button class="secondary-btn" onclick="enterOffline()">Continua offline (senza sync)</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN 2: SUPABASE SETUP ══ -->
+<div class="screen" id="screen2">
+  <div class="card">
+    <div class="card-logo" style="background:var(--green)"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div>
+    <h1>Connetti Supabase</h1>
+    <p class="sub">Inserisci le credenziali del tuo progetto Supabase. Le stesse credenziali vanno condivise con il cliente.</p>
+
+    <div class="err-box" id="setupErr"></div>
+
+    <div class="fields">
+      <div class="field">
+        <label>Il tuo nome</label>
+        <input type="text" id="setupName" placeholder="es. Mario / Agenzia XYZ">
+      </div>
+      <div class="field">
+        <label>Supabase Project URL</label>
+        <input type="text" id="setupUrl" placeholder="https://xxxxxxxxxxxx.supabase.co">
+        <div class="hint">Settings → General → Project URL</div>
+      </div>
+      <div class="field">
+        <label>Publishable Key (o Anon Key)</label>
+        <input type="password" id="setupKey" placeholder="sb_publishable_... oppure eyJhbGci...">
+        <div class="hint">Settings → API Keys → copia la <strong>Publishable key</strong> (quella che inizia con <code>sb_publishable_</code>)</div>
+      </div>
+    </div>
+
+    <button class="primary-btn" id="connectBtn" onclick="setupConnect()">Connetti e apri il calendario →</button>
+    <button class="secondary-btn" onclick="showScreen('screen1')">← Torna alla guida</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+<nav>
+  <div class="logo"><svg viewBox="0 0 16 16"><path d="M3 2a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1H3zm1 2h8v1H4V4zm0 3h8v5H4V7z"/></svg></div>
+  <span class="client-name" id="clientName" onclick="startEditName()">Calendario</span>
+  <input class="client-edit" id="clientEdit" onblur="saveClientName()" onkeydown="if(event.key==='Enter')saveClientName()">
+  <div class="nav-sep"></div>
+  <div class="view-tabs">
+    <button class="view-tab" id="tabMonth" onclick="switchView('month')">Mese</button>
+    <button class="view-tab active" id="tabWeek" onclick="switchView('week')">Settimana</button>
+  </div>
+  <div class="nav-right">
+    <div class="sync-wrap"><div class="sync-dot" id="syncDot"></div><span id="syncLbl" style="font-size:12px">—</span></div>
+    <button class="nav-btn" onclick="syncNow()">
+      <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+      Sincronizza
+    </button>
+    <button class="nav-btn" onclick="openSettings()">⚙️</button>
+    <button class="nav-btn accent" onclick="openAdd()">+ Nuovo post</button>
+  </div>
+</nav>
+
+<div class="toolbar">
+  <div class="week-nav">
+    <button class="icon-btn" onclick="changePeriod(-1)">&#8249;</button>
+    <span class="period-label" id="periodLabel"></span>
+    <button class="icon-btn" onclick="changePeriod(1)">&#8250;</button>
+  </div>
+  <button class="today-btn" onclick="goToday()">Oggi</button>
+  <div class="filter-group">
+    <select class="filter-select" id="filterTipo" onchange="render()">
+      <option value="">Tutte le tipologie</option>
+      <option value="reel">Reel</option><option value="carosello">Carosello</option>
+      <option value="story">Story</option><option value="post">Post Foto</option>
+      <option value="video">Video</option><option value="live">Live</option>
+    </select>
+    <select class="filter-select" id="filterCanale" onchange="render()">
+      <option value="">Tutti i canali</option>
+      <option value="instagram">Instagram</option><option value="facebook">Facebook</option>
+      <option value="tiktok">TikTok</option><option value="linkedin">LinkedIn</option>
+    </select>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--reel)"></div>Reel</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--carosello)"></div>Carosello</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--story)"></div>Story</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--post)"></div>Post Foto</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--video)"></div>Live</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--live)"></div>Live</div>
+</div>
+
+<div id="weekView"><div class="cal-grid" id="calGrid"></div></div>
+<div id="monthView"></div>
+</div>
+
+<!-- POST MODAL -->
+<div class="modal-overlay" id="postModal" onclick="if(event.target===this)closeModal('postModal')">
+  <div class="modal">
+    <div class="modal-header"><h2 id="modalTitle">Nuovo post</h2><button class="modal-close" onclick="closeModal('postModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="mfield"><label>Tipologia</label>
+        <div class="tipo-pills">
+          <button class="tipo-pill" data-tipo="reel" onclick="selT('reel')">🎬 Reel</button>
+          <button class="tipo-pill" data-tipo="carosello" onclick="selT('carosello')">🖼 Carosello</button>
+          <button class="tipo-pill" data-tipo="story" onclick="selT('story')">⭕ Story</button>
+          <button class="tipo-pill" data-tipo="post" onclick="selT('post')">📸 Post Foto</button>
+          <button class="tipo-pill" data-tipo="video" onclick="selT('video')">🎥 Video</button>
+          <button class="tipo-pill" data-tipo="live" onclick="selT('live')">🔴 Live</button>
+        </div>
+      </div>
+      <div class="mfield-row">
+        <div class="mfield"><label>Data</label><input type="date" id="fData"></div>
+        <div class="mfield"><label>Ora</label><input type="time" id="fOra" value="10:00"></div>
+      </div>
+      <div class="mfield-row">
+        <div class="mfield"><label>Canale</label>
+          <select id="fCanale"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="tiktok">TikTok</option><option value="linkedin">LinkedIn</option></select>
+        </div>
+        <div class="mfield"><label>Luogo</label><input type="text" id="fLuogo" placeholder="es. Studio, Location..."></div>
+      </div>
+      <div class="mfield"><label>Anteprima contenuto</label><input type="text" id="fAnteprima" placeholder="Breve descrizione visiva"></div>
+      <div class="mfield"><label>Copy</label><textarea id="fCopy" placeholder="Testo del post..."></textarea></div>
+      <div class="mfield-row">
+        <div class="mfield"><label>Hashtag</label><input type="text" id="fHashtag" placeholder="#hashtag1 #hashtag2"></div>
+        <div class="mfield"><label>Tag</label><input type="text" id="fTag" placeholder="@account1 @account2"></div>
+      </div>
+      <div class="mfield"><label>Note cliente</label><textarea id="fNote" placeholder="Note aggiuntive..." style="min-height:60px"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-delete" id="deleteBtn" onclick="deletePost()" style="display:none">Elimina</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel" onclick="closeModal('postModal')">Annulla</button>
+        <button class="btn-save" onclick="savePost()">Salva</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')">
+  <div class="sm">
+    <div class="modal-header"><h2>Impostazioni</h2><button class="modal-close" onclick="closeModal('settingsModal')">✕</button></div>
+    <div class="sm-sec">
+      <h3>☁️ Supabase</h3>
+      <div class="sm-row"><input class="sm-inp" type="text" id="smUrl" placeholder="Project URL"></div>
+      <div class="sm-row">
+        <input class="sm-inp" type="password" id="smKey" placeholder="Publishable / Anon key">
+        <button class="sm-btn p" onclick="updateSb()">Salva</button>
+      </div>
+      <div class="sm-hint">Stesse credenziali per te e il cliente — condividete lo stesso database.</div>
+    </div>
+    <div class="sm-sec">
+      <h3>💾 Backup</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="sm-btn s" onclick="exportJSON()">Esporta JSON</button>
+        <button class="sm-btn s" onclick="exportCSV()">Esporta CSV</button>
+        <button class="sm-btn s" onclick="document.getElementById('importInp').click()">Importa JSON</button>
+      </div>
+      <input type="file" id="importInp" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+    <div class="sm-sec">
+      <h3>⚠️ Reset</h3>
+      <button class="sm-btn d" onclick="resetApp()">Disconnetti e ricomincia</button>
+    </div>
+  </div>
+</div>
+
+<div class="page-loader" id="pageLoader"><div class="spin"></div><p id="loaderMsg">Caricamento...</p></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const GS=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+const MF=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const MS=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+const HOURS=['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+const CC={instagram:'#E1306C',facebook:'#1877F2',tiktok:'#010101',linkedin:'#0A66C2'};
+const CL={instagram:'IG',facebook:'FB',tiktok:'TK',linkedin:'LI'};
+const TE={reel:'🎬',carosello:'🖼',story:'⭕',post:'📸',video:'🎥',live:'🔴'};
+const TL={reel:'Reel',carosello:'Carosello',story:'Story',post:'Post Foto',video:'Video',live:'Live'};
+const TC={reel:{bg:'#FFF0F2',txt:'#B01828'},carosello:{bg:'#F0F1FC',txt:'#3A3F9C'},story:{bg:'#F0FAF9',txt:'#0D6B64'},post:{bg:'#FEF8EC',txt:'#925C00'},video:{bg:'#F5F0EE',txt:'#5C3E37'},live:{bg:'#EFF8FF',txt:'#0A558C'}};
+
+let posts=[],view='week',curDate=new Date(),editId=null,selTipo='',sbUrl='',sbKey='',isOnline=false;
+
+/* ══ SCREENS ══ */
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+
+/* ══ SUPABASE ══ */
+function sbH(){return{'Content-Type':'application/json','apikey':sbKey,'Authorization':'Bearer '+sbKey,'Prefer':'return=representation'}}
+async function sbFetch(path,opts={}){
+  const res=await fetch(sbUrl+'/rest/v1/'+path,{...opts,headers:{...sbH(),...(opts.headers||{})}});
+  if(!res.ok){const t=await res.text();throw new Error(res.status+': '+t)}
+  const ct=res.headers.get('content-type')||'';
+  return ct.includes('json')?res.json():res.text();
+}
+async function pullAll(){const d=await sbFetch('calendario?select=*&order=data.asc,ora.asc');posts=Array.isArray(d)?d:[];saveLoc()}
+async function upsert(p){await sbFetch('calendario',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(p)})}
+async function delRemote(id){await sbFetch('calendario?id=eq.'+encodeURIComponent(id),{method:'DELETE'})}
+
+/* ══ SETUP ══ */
+async function setupConnect(){
+  const name=(document.getElementById('setupName').value||'').trim();
+  const url=(document.getElementById('setupUrl').value||'').trim().replace(/\/$/,'');
+  const key=(document.getElementById('setupKey').value||'').trim();
+  const errEl=document.getElementById('setupErr');
+  errEl.classList.remove('show');
+  if(!url||!key){errEl.textContent='Inserisci URL e chiave';errEl.classList.add('show');return}
+  const btn=document.getElementById('connectBtn');
+  btn.disabled=true;btn.textContent='Connessione in corso...';
+  sbUrl=url;sbKey=key;
+  try{
+    await pullAll();
+    localStorage.setItem('cal_sb_url',url);localStorage.setItem('cal_sb_key',key);
+    if(name)localStorage.setItem('cal_client',name);
+    isOnline=true;enterApp();
+  }catch(e){
+    errEl.textContent='Errore: '+e.message;errEl.classList.add('show');
+    btn.disabled=false;btn.textContent='Connetti e apri il calendario →';
+  }
+}
+
+function enterOffline(){
+  try{posts=JSON.parse(localStorage.getItem('cal_posts_loc')||'[]')}catch(e){posts=[]}
+  isOnline=false;enterApp();
+}
+
+function enterApp(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('app').style.display='block';
+  const n=localStorage.getItem('cal_client');
+  if(n)document.getElementById('clientName').textContent=n;
+  document.getElementById('smUrl').value=sbUrl;
+  document.getElementById('smKey').value=sbKey;
+  setSyncUI(isOnline?'ok':'err');
+  updateLabel();render();
+}
+
+/* ══ SYNC ══ */
+function setSyncUI(s){
+  const d=document.getElementById('syncDot'),l=document.getElementById('syncLbl');
+  d.className='sync-dot '+(s==='ok'?'ok':s==='busy'?'busy':'err');
+  l.textContent=s==='ok'?'Sincronizzato':s==='busy'?'Salvataggio...':isOnline?'Errore':'Offline';
+}
+async function syncNow(){
+  if(!isOnline){toast('Modalità offline');return}
+  showLoader('Sincronizzazione...');
+  try{await pullAll();render();setSyncUI('ok');toast('Sincronizzato ✓')}
+  catch(e){setSyncUI('err');toast('Errore: '+e.message)}
+  finally{hideLoader()}
+}
+
+function saveLoc(){localStorage.setItem('cal_posts_loc',JSON.stringify(posts))}
+
+/* ══ SETTINGS ══ */
+function openSettings(){document.getElementById('smUrl').value=sbUrl;document.getElementById('smKey').value=sbKey;document.getElementById('settingsModal').classList.add('open')}
+async function updateSb(){
+  const u=(document.getElementById('smUrl').value||'').trim().replace(/\/$/,'');
+  const k=(document.getElementById('smKey').value||'').trim();
+  if(!u||!k){toast('Compila URL e chiave');return}
+  sbUrl=u;sbKey=k;localStorage.setItem('cal_sb_url',u);localStorage.setItem('cal_sb_key',k);
+  try{await pullAll();isOnline=true;render();setSyncUI('ok');toast('Connessione aggiornata ✓')}
+  catch(e){toast('Errore: '+e.message)}
+}
+function resetApp(){if(!confirm('Disconnettersi?'))return;localStorage.clear();location.reload()}
+
+/* ══ CLIENT NAME ══ */
+function startEditName(){const n=document.getElementById('clientName'),e=document.getElementById('clientEdit');e.value=n.textContent;n.style.display='none';e.style.display='inline-block';e.focus();e.select()}
+function saveClientName(){const n=document.getElementById('clientName'),e=document.getElementById('clientEdit');const v=e.value.trim()||'Calendario';n.textContent=v;localStorage.setItem('cal_client',v);n.style.display='';e.style.display='none'}
+
+/* ══ VIEW ══ */
+function switchView(v){view=v;document.getElementById('tabMonth').classList.toggle('active',v==='month');document.getElementById('tabWeek').classList.toggle('active',v==='week');document.getElementById('weekView').style.display=v==='week'?'block':'none';document.getElementById('monthView').style.display=v==='month'?'block':'none';updateLabel();render()}
+function updateLabel(){if(view==='week'){const m=mon(curDate),s=add(m,6);document.getElementById('periodLabel').textContent=`${m.getDate()} ${MS[m.getMonth()]} — ${s.getDate()} ${MS[s.getMonth()]} ${s.getFullYear()}`}else document.getElementById('periodLabel').textContent=`${MF[curDate.getMonth()]} ${curDate.getFullYear()}`}
+function changePeriod(n){if(view==='week')curDate=add(curDate,n*7);else curDate=new Date(curDate.getFullYear(),curDate.getMonth()+n,1);updateLabel();render()}
+function goToday(){curDate=new Date();updateLabel();render()}
+function fp(){const ft=document.getElementById('filterTipo').value,fc=document.getElementById('filterCanale').value;return posts.filter(p=>(!ft||p.tipo===ft)&&(!fc||p.canale===fc))}
+function render(){view==='week'?renderWeek():renderMonth()}
+function fd(d){return d.toISOString().split('T')[0]}
+function mon(d){const c=new Date(d),dy=c.getDay(),df=c.getDate()-dy+(dy===0?-6:1);c.setDate(df);return c}
+function add(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+
+/* ══ WEEK ══ */
+function renderWeek(){
+  const g=document.getElementById('calGrid');g.innerHTML='';
+  const today=fd(new Date()),m=mon(new Date(curDate));
+  const days=Array.from({length:7},(_,i)=>add(m,i)),flt=fp();
+  const th=document.createElement('div');th.className='day-header time-col';g.appendChild(th);
+  days.forEach(d=>{const h=document.createElement('div');h.className='day-header'+(fd(d)===today?' today':'');h.innerHTML=`<div class="day-name">${GS[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>`;g.appendChild(h)});
+  HOURS.forEach(hr=>{
+    const tl=document.createElement('div');tl.className='time-label';tl.textContent=hr;g.appendChild(tl);
+    days.forEach(d=>{
+      const cell=document.createElement('div');cell.className='day-cell';
+      const ds=fd(d),hh=hr.split(':')[0];
+      flt.filter(p=>p.data===ds&&p.ora&&p.ora.startsWith(hh)).forEach(p=>cell.appendChild(mkCard(p)));
+      const ab=document.createElement('button');ab.className='add-btn';ab.textContent='+';ab.onclick=()=>openAdd(ds,hr);cell.appendChild(ab);
+      g.appendChild(cell);
+    });
+  });
+}
+function mkCard(p){
+  const c=document.createElement('div');c.className=`post-card tipo-${p.tipo||'post'}`;c.onclick=()=>openEdit(p.id);
+  c.innerHTML=`<div class="tipo-badge">${TE[p.tipo]||'📌'} ${TL[p.tipo]||p.tipo}</div>
+    <div class="post-title">${esc(p.anteprima||'—')}</div>
+    ${p.copy?`<div class="post-copy">${esc(p.copy)}</div>`:''}
+    <div class="post-meta">
+      ${p.canale?`<div class="channel-dot" style="background:${CC[p.canale]||'#aaa'}">${CL[p.canale]||'?'}</div>`:''}
+      ${p.hashtag?`<span class="hashtag-tag">${esc(p.hashtag.split(' ').slice(0,2).join(' '))}</span>`:''}
+    </div>`;
+  return c;
+}
+
+/* ══ MONTH ══ */
+function renderMonth(){
+  const mv=document.getElementById('monthView');mv.innerHTML='';
+  const flt=fp(),today=fd(new Date()),y=curDate.getFullYear(),m=curDate.getMonth();
+  const first=new Date(y,m,1),last=new Date(y,m+1,0);
+  let sd=first.getDay();if(sd===0)sd=7;sd--;
+  const grid=document.createElement('div');grid.className='month-grid';
+  ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].forEach(g=>{const h=document.createElement('div');h.className='month-dow';h.textContent=g;grid.appendChild(h)});
+  const total=Math.ceil((sd+last.getDate())/7)*7;
+  for(let i=0;i<total;i++){
+    const dn=i-sd+1,cell=document.createElement('div');cell.className='month-cell';
+    const ds=fd(new Date(y,m,dn));
+    if(dn<1||dn>last.getDate())cell.classList.add('other-month');
+    if(ds===today)cell.classList.add('today-cell');
+    const num=document.createElement('div');num.className='month-day-num';num.textContent=(dn>=1&&dn<=last.getDate())?dn:'';cell.appendChild(num);
+    if(dn>=1&&dn<=last.getDate()){
+      const dp=flt.filter(p=>p.data===ds).sort((a,b)=>(a.ora||'').localeCompare(b.ora||''));
+      dp.slice(0,3).forEach(p=>{
+        const c=TC[p.tipo]||{bg:'#F5F5F3',txt:'#666'};
+        const pill=document.createElement('div');pill.className='month-post-pill';
+        pill.style.cssText=`background:${c.bg};color:${c.txt}`;
+        pill.innerHTML=`<span style="font-size:10px;flex-shrink:0">${TE[p.tipo]||'📌'}</span><span>${esc(p.anteprima||TL[p.tipo]||'Post')}</span>`;
+        pill.onclick=()=>openEdit(p.id);cell.appendChild(pill);
+      });
+      if(dp.length>3){const more=document.createElement('div');more.className='month-more';more.textContent=`+${dp.length-3} altri`;more.onclick=()=>{switchView('week');curDate=new Date(ds);updateLabel();render()};cell.appendChild(more)}
+      const ab=document.createElement('button');ab.className='month-add-btn';ab.textContent='+ aggiungi';ab.onclick=()=>openAdd(ds,'10:00');cell.appendChild(ab);
+    }
+    grid.appendChild(cell);
+  }
+  mv.appendChild(grid);
+}
+
+/* ══ POST CRUD ══ */
+function openAdd(dateStr,ora){
+  editId=null;selTipo='';
+  document.getElementById('modalTitle').textContent='Nuovo post';
+  document.getElementById('deleteBtn').style.display='none';
+  document.getElementById('fData').value=dateStr||fd(new Date());
+  document.getElementById('fOra').value=ora||'10:00';
+  document.getElementById('fCanale').value='instagram';
+  ['fLuogo','fAnteprima','fCopy','fHashtag','fTag','fNote'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.tipo-pill').forEach(p=>p.className='tipo-pill');
+  document.getElementById('postModal').classList.add('open');
+}
+function openEdit(id){
+  const p=posts.find(x=>x.id===id);if(!p)return;
+  editId=id;selTipo=p.tipo||'';
+  document.getElementById('modalTitle').textContent='Modifica post';
+  document.getElementById('deleteBtn').style.display='inline-flex';
+  document.getElementById('fData').value=p.data||'';
+  document.getElementById('fOra').value=p.ora||'10:00';
+  document.getElementById('fCanale').value=p.canale||'instagram';
+  document.getElementById('fLuogo').value=p.luogo||'';
+  document.getElementById('fAnteprima').value=p.anteprima||'';
+  document.getElementById('fCopy').value=p.copy||'';
+  document.getElementById('fHashtag').value=p.hashtag||'';
+  document.getElementById('fTag').value=p.tag||'';
+  document.getElementById('fNote').value=p.note||'';
+  document.querySelectorAll('.tipo-pill').forEach(b=>b.className='tipo-pill'+(b.dataset.tipo===selTipo?` sel-${selTipo}`:''));
+  document.getElementById('postModal').classList.add('open');
+}
+function selT(t){selTipo=t;document.querySelectorAll('.tipo-pill').forEach(b=>b.className='tipo-pill'+(b.dataset.tipo===t?` sel-${t}`:''))}
+
+async function savePost(){
+  const p={id:editId||Date.now().toString(),tipo:selTipo||'post',data:document.getElementById('fData').value,ora:document.getElementById('fOra').value,canale:document.getElementById('fCanale').value,luogo:document.getElementById('fLuogo').value,anteprima:document.getElementById('fAnteprima').value,copy:document.getElementById('fCopy').value,hashtag:document.getElementById('fHashtag').value,tag:document.getElementById('fTag').value,note:document.getElementById('fNote').value};
+  if(editId)posts=posts.map(x=>x.id===editId?p:x);else posts.push(p);
+  saveLoc();closeModal('postModal');render();
+  if(isOnline){setSyncUI('busy');try{await upsert(p);setSyncUI('ok');toast(editId?'Aggiornato ✓':'Aggiunto ✓')}catch(e){setSyncUI('err');toast('Locale OK, sync fallito: '+e.message)}}
+  else toast(editId?'Aggiornato (offline)':'Aggiunto (offline)');
+}
+async function deletePost(){
+  if(!editId||!confirm('Eliminare?'))return;
+  posts=posts.filter(p=>p.id!==editId);saveLoc();closeModal('postModal');render();
+  if(isOnline){try{await delRemote(editId);setSyncUI('ok');toast('Eliminato ✓')}catch(e){setSyncUI('err');toast('Locale OK, sync fallito')}}
+  else toast('Eliminato (offline)');
+}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+/* ══ EXPORT/IMPORT ══ */
+function exportJSON(){dl(new Blob([JSON.stringify({client:localStorage.getItem('cal_client')||'',posts},null,2)],{type:'application/json'}),'calendario.json');toast('JSON esportato')}
+function exportCSV(){const h=['Data','Ora','Tipologia','Canale','Luogo','Anteprima','Copy','Hashtag','Tag','Note'];const rows=posts.map(p=>[p.data,p.ora,p.tipo,p.canale,p.luogo,p.anteprima,p.copy,p.hashtag,p.tag,p.note].map(v=>`"${(v||'').replace(/"/g,'""')}"`));dl(new Blob(['\uFEFF',[h.join(','),...rows.map(r=>r.join(','))].join('\n')],{type:'text/csv'}),'calendario.csv');toast('CSV esportato')}
+async function importJSON(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=async ev=>{try{const d=JSON.parse(ev.target.result);const imp=d.posts||d;if(d.client){localStorage.setItem('cal_client',d.client);document.getElementById('clientName').textContent=d.client}if(isOnline){showLoader('Importazione...');for(const p of imp)await upsert(p);await pullAll();hideLoader()}else{posts=imp;saveLoc()}render();closeModal('settingsModal');toast('Importato ✓')}catch(err){hideLoader();toast('Errore nel file')}};r.readAsText(file);e.target.value=''}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click()}
+
+/* ══ LOADER/TOAST ══ */
+function showLoader(msg){document.getElementById('loaderMsg').textContent=msg||'';document.getElementById('pageLoader').classList.add('show')}
+function hideLoader(){document.getElementById('pageLoader').classList.remove('show')}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
+
+/* ══ BOOT ══ */
+(function(){
+  sbUrl=localStorage.getItem('cal_sb_url')||'';
+  sbKey=localStorage.getItem('cal_sb_key')||'';
+  if(sbUrl&&sbKey){
+    try{posts=JSON.parse(localStorage.getItem('cal_posts_loc')||'[]')}catch(e){posts=[]}
+    isOnline=true;enterApp();
+    pullAll().then(()=>{render();setSyncUI('ok')}).catch(e=>{setSyncUI('err');toast('Sync fallito: '+e.message)});
+  }
+})();
+</script>
+</body>
+</html>
