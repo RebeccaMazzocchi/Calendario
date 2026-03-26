@@ -400,7 +400,8 @@ nav{height:56px;background:var(--surface);border-bottom:1px solid var(--border);
       <div class="sf"><label>Il tuo nome</label><input type="text" id="setupName" placeholder="es. Mario / Agenzia XYZ"></div>
       <div class="sf"><label>Il tuo ruolo</label>
         <select id="setupRuolo" style="width:100%;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;outline:none">
-          <option value="team">Team (posso modificare tutto)</option>
+          <option value="master">Master — solo io (accesso completo + cronologia)</option>
+          <option value="team">Team (modifica tutto, senza cronologia)</option>
           <option value="cliente">Cliente (posso commentare e approvare)</option>
         </select>
       </div>
@@ -549,7 +550,7 @@ nav{height:56px;background:var(--surface);border-bottom:1px solid var(--border);
           <label class="vtgl"><input type="checkbox" id="visStrategia" onchange="saveVisibility()"><span class="vtslider"></span></label>
         </div>
         <div class="vis-row">
-          <div><div class="vis-label">Cronologia attività</div><div class="vis-hint">Il cliente può vedere chi ha fatto cosa</div></div>
+          <div><div class="vis-label">Cronologia attività <span style="font-size:11px;color:var(--accent)">(solo Master)</span></div><div class="vis-hint">Visibile solo a te, non al team né al cliente</div></div>
           <label class="vtgl"><input type="checkbox" id="visLog" onchange="saveVisibility()"><span class="vtslider"></span></label>
         </div>
       </div>
@@ -832,8 +833,7 @@ async function setupConnect(){
   if(!url||!key){err.textContent='Inserisci URL e chiave';err.classList.add('show');return}
   const btn=document.getElementById('connectBtn');btn.disabled=true;btn.textContent='Connessione...';
   sbUrl=url;sbKey=key;userRole=ruolo;userName=name||'Utente';
-  localStorage.setItem('cal_sb_url',url);localStorage.setItem('cal_sb_key',key);
-  localStorage.setItem('cal_user_role',ruolo);localStorage.setItem('cal_user_name',userName);
+  localStorage.setItem('cal_sb_url',url);localStorage.setItem('cal_sb_key',key);localStorage.setItem('cal_user_role',ruolo);localStorage.setItem('cal_user_name',userName);
   try{
     await pullAll();
     if(name)localStorage.setItem('cal_client',name);
@@ -854,20 +854,43 @@ function enterApp(){
   document.getElementById('smUrl').value=sbUrl;
   document.getElementById('smKey').value=sbKey;
   const rb=document.getElementById('roleBadge');
-  rb.textContent=userRole==='team'?'👤 Team':'👤 Cliente';
-  rb.className='role-badge '+(userRole==='team'?'team':'cliente');
-  document.getElementById('scriptsRoleBadge').textContent=userRole==='team'?'👤 Team':'👤 Cliente';
-  document.getElementById('scriptsRoleBadge').className='role-badge '+(userRole==='team'?'team':'cliente');
+  rb.textContent=userRole==='master'?'👑 Master':userRole==='team'?'👤 Team':'👤 Cliente';
+  rb.className='role-badge '+(userRole==='master'?'team':userRole==='team'?'team':'cliente');
+  document.getElementById('scriptsRoleBadge').textContent=userRole==='master'?'👑 Master':userRole==='team'?'👤 Team':'👤 Cliente';
+  document.getElementById('scriptsRoleBadge').className='role-badge '+(userRole==='master'?'team':userRole==='team'?'team':'cliente');
   applyVisibilityAndRole();
   setSyncUI(isOnline?'ok':'err');
+  preloadStrategia();
   updateLabel();render();renderScripts();renderStrategia();renderLog();updateScriptsBadge();
 }
 
+function preloadStrategia(){
+  if(strategia.length>0)return;
+  const now=Date.now();
+  const defaults=[
+    {sezione:'business_goal',rows:[['Obiettivo 1',''],['Obiettivo 2',''],['Obiettivo 3',''],['Obiettivo 4','']]},
+    {sezione:'obiettivi_social',rows:[['Brand awareness',''],['Traffico web',''],['Lead generation',''],['Fidelizzazione',''],['Engagement','']]},
+    {sezione:'swot',rows:[['forza',''],['forza',''],['debolezza',''],['debolezza',''],['minaccia',''],['minaccia',''],['opportunita',''],['opportunita','']]},
+    {sezione:'buyer_personas',rows:[['Nome, età — ruolo','Ruolo | Descrizione breve'],['Nome, età — ruolo','Ruolo | Descrizione breve'],['Nome, età — ruolo','Ruolo | Descrizione breve']]},
+    {sezione:'tematiche',rows:[['Tema 1',''],['Tema 2',''],['Tema 3',''],['Tema 4',''],['Tema 5','']]},
+    {sezione:'gestione_canali',rows:[['Instagram','Organico + ADS|1×/settimana'],['Facebook','Organico + ADS|1×/settimana'],['TikTok','Organico|1×/settimana'],['YouTube','Organico|1×/settimana']]},
+    {sezione:'strategia_organico',rows:[['Tipo formato','Titolo format|→ Esempio 1\n→ Esempio 2'],['Tipo formato','Titolo format|→ Esempio 1\n→ Esempio 2'],['Tipo formato','Titolo format|→ Esempio 1\n→ Esempio 2'],['Tipo formato','Titolo format|→ Esempio 1\n→ Esempio 2']]},
+    {sezione:'format',rows:[['Educativo','Titolo|→ Esempio'],['Ispirazionale','Titolo|→ Esempio'],['Testimonial','Titolo|→ Esempio'],['Lifestyle','Titolo|→ Esempio'],['Ironico','Titolo|→ Esempio'],['Offerte','Titolo|→ Esempio']]},
+    {sezione:'strategia_ads',rows:[['__attivo','true']]},
+  ];
+  defaults.forEach(({sezione,rows})=>{
+    rows.forEach((r,i)=>{
+      strategia.push({id:`${sezione}_${i}_${now}`,sezione,chiave:r[0],valore:r[1],ordinamento:i});
+    });
+  });
+  saveLoc();
+}
+
 function applyVisibilityAndRole(){
-  const isTeam=userRole==='team';
+  const isTeam=userRole==='master'||userRole==='team';const isMaster=userRole==='master';
   document.getElementById('tabStrategia').style.display=(isTeam||visibility.strategia)?'flex':'none';
   document.getElementById('tabScripts').style.display=(isTeam||visibility.scripts)?'flex':'none';
-  document.getElementById('tabLog').style.display=(isTeam||visibility.log)?'flex':'none';
+  document.getElementById('tabLog').style.display=isMaster?'flex':'none';
   document.getElementById('tabSettings').style.display=isTeam?'flex':'none';
   document.getElementById('mainAddBtn').style.display=isTeam?'flex':'none';
   document.getElementById('newScriptBtn').style.display=isTeam?'flex':'none';
@@ -909,7 +932,7 @@ function switchPage(p){
   const tm={cal:'tabCal',scripts:'tabScripts',strategia:'tabStrategia',log:'tabLog',settings:'tabSettings'};
   document.getElementById(pm[p]).classList.add('active');
   document.getElementById(tm[p]).classList.add('active');
-  document.getElementById('mainAddBtn').style.display=(p==='cal'&&userRole==='team')?'flex':'none';
+  document.getElementById('mainAddBtn').style.display=(p==='cal'&&isTeam)?'flex':'none';
 }
 
 function startEditName(){const n=document.getElementById('clientName'),e=document.getElementById('clientEdit');e.value=n.textContent;n.style.display='none';e.style.display='inline-block';e.focus();e.select()}
@@ -956,7 +979,7 @@ function renderWeek(){
       const cell=document.createElement('div');cell.className='dcell';
       const ds=fd(d),hh=hr.split(':')[0];
       flt.filter(p=>p.data===ds&&p.ora&&p.ora.startsWith(hh)).forEach(p=>cell.appendChild(mkCard(p)));
-      if(userRole==='team'){const ab=document.createElement('button');ab.className='addbtn';ab.textContent='+';ab.onclick=()=>openAdd(ds,hr);cell.appendChild(ab);}
+      if(isTeam){const ab=document.createElement('button');ab.className='addbtn';ab.textContent='+';ab.onclick=()=>openAdd(ds,hr);cell.appendChild(ab);}
       g.appendChild(cell);
     });
   });
@@ -998,7 +1021,7 @@ function renderMonth(){
         pill.onclick=()=>openEdit(p.id);cell.appendChild(pill);
       });
       if(dp.length>3){const more=document.createElement('div');more.className='mmore';more.textContent=`+${dp.length-3} altri`;more.onclick=()=>{switchCalView('week');curDate=new Date(ds);updateLabel();render()};cell.appendChild(more)}
-      if(userRole==='team'){const ab=document.createElement('button');ab.className='maddbtn';ab.textContent='+ aggiungi';ab.onclick=()=>openAdd(ds,'10:00');cell.appendChild(ab);}
+      if(isTeam){const ab=document.createElement('button');ab.className='maddbtn';ab.textContent='+ aggiungi';ab.onclick=()=>openAdd(ds,'10:00');cell.appendChild(ab);}
     }
     grid.appendChild(cell);
   }
@@ -1007,7 +1030,7 @@ function renderMonth(){
 
 /* POST CRUD */
 function openAdd(ds,ora){
-  if(userRole!=='team')return;
+  if(!isTeam)return;
   editId=null;selTipo='';selCanali=[];
   document.getElementById('modalTitle').textContent='Nuovo post';
   document.getElementById('deleteBtn').style.display='none';
@@ -1021,7 +1044,7 @@ function openAdd(ds,ora){
 }
 function openEdit(id){
   const p=posts.find(x=>x.id===id);if(!p)return;
-  if(userRole!=='team'){toast('Solo il team può modificare i post');return}
+  if(!isTeam){toast('Solo il team può modificare i post');return}
   editId=id;selTipo=p.tipo||'';
   selCanali=Array.isArray(p.canali)?p.canali:(p.canale?[p.canale]:[]);
   document.getElementById('modalTitle').textContent='Modifica post';
@@ -1126,7 +1149,7 @@ function renderScripts(){
     const stClass={bozza:'bz',in_revisione:'rv',approvato:'ap',modifiche:'mo'}[stato]||'bz';
     const card=document.createElement('div');
     card.className='scard'+(stato==='modifiche'?' mod':stato==='approvato'?' app':'');
-    const isTeam=userRole==='team';
+    const isTeam=userRole==='master'||userRole==='team';const isMaster=userRole==='master';
     let footerBtns='';
     if(isTeam){
       footerBtns+=`<button class="scbtn del" onclick="event.stopPropagation();deleteScript('${s.id}')">🗑 Elimina</button>`;
@@ -1251,7 +1274,7 @@ function loadScriptVersion(v,s){
   ta.value=v.contenuto||'';
   const versions=scriptVersions.filter(x=>x.script_id===s.id);
   const isLatest=v.versione===Math.max(...versions.map(x=>x.versione),1);
-  const isTeam=userRole==='team';
+  const isTeam=userRole==='master'||userRole==='team';const isMaster=userRole==='master';
   const stato=s.stato||'bozza';
   ta.readOnly=!isTeam||stato==='approvato';
   const actDiv=document.getElementById('scmActions');actDiv.innerHTML='';
@@ -1342,7 +1365,7 @@ function renderStrategia(){
   if(!sezioni.length){g.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="ei">🎯</div><p>Nessuna sezione. Clicca "+ Aggiungi sezione" per iniziare.</p></div>`;return}
   sezioni.forEach(sez=>{
     const rows=strategia.filter(r=>r.sezione===sez).sort((a,b)=>a.ordinamento-b.ordinamento);
-    const isTeam=userRole==='team';
+    const isTeam=userRole==='master'||userRole==='team';const isMaster=userRole==='master';
     const dot=SEZIONE_DOTS[sez]||'#888';
     const label=SEZIONE_LABELS[sez]||sez;
     const isToggle=sez==='strategia_organico'||sez==='strategia_ads';
