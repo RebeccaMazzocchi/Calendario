@@ -894,8 +894,8 @@ function enterApp(){
   document.getElementById('scrb').className='rb '+role;
   applyRole();
   setSyncUI(online?'ok':'err');
-  preloadStrat();
-  updateLbl();render();renderSc();renderStrat();renderLog();updateBadge();
+  preloadStrat().then(()=>renderStrat());
+  updateLbl();render();renderSc();renderLog();updateBadge();
 }
 
 // ── RUOLO E VISIBILITÀ ──
@@ -1617,8 +1617,7 @@ async function changeScSt(stato){
 }
 
 // ── STRATEGIA ──
-function preloadStrat(){
-  if(strat.length>0)return;
+async function preloadStrat(){
   const now=Date.now();
   const defs=[
     {s:'business_goal',rows:[['Obiettivo 1',''],['Obiettivo 2',''],['Obiettivo 3',''],['Obiettivo 4','']]},
@@ -1631,12 +1630,21 @@ function preloadStrat(){
     {s:'strategia_organico',rows:[['Tipo formato','Titolo|→ Esempio 1\n→ Esempio 2'],['Tipo formato','Titolo|→ Esempio'],['Tipo formato','Titolo|→ Esempio'],['Tipo formato','Titolo|→ Esempio']]},
     {s:'strategia_ads',rows:[['__attivo','true']]},
   ];
+  const sezioniEsistenti=new Set(strat.map(r=>r.sezione));
+  const nuoveRows=[];
   defs.forEach(({s,rows})=>{
-    rows.forEach((r,i)=>{
-      strat.push({id:`${s}_${i}_${now}`,sezione:s,chiave:r[0],valore:r[1],ordinamento:i});
-    });
+    if(!sezioniEsistenti.has(s)){
+      rows.forEach((r,i)=>{
+        const entry={id:`${s}_${i}_${now}`,sezione:s,chiave:r[0],valore:r[1],ordinamento:i};
+        strat.push(entry);
+        nuoveRows.push(entry);
+      });
+    }
   });
-  saveLoc();
+  if(nuoveRows.length>0){
+    saveLoc();
+    if(online){try{for(const r of nuoveRows)await sbUp('strategia',r)}catch(e){}}
+  }
 }
 
 function renderStrat(){
